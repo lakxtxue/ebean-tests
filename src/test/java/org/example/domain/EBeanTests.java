@@ -93,7 +93,7 @@ public class EBeanTests {
 		confCp.getConList().add(confCpCon);
 
 		Thread t1 = new Thread(()->{
-			// 4 查询 config_1
+			// 4 query
 			Transaction transactionB = database.beginTransaction(TxIsolation.REPEATABLE_READ);
 			Config con1 = new QConfig().setUseCache(true).usingTransaction(transactionB)
 					.setId("config_1").findOne();
