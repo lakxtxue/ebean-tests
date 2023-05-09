@@ -1,7 +1,7 @@
 plugins {
     id('idea')
     id('java')
-    id('io.ebean') version '12.6.5'
+    id('io.ebean') version '13.17.3'
 }
 
 repositories {
@@ -15,20 +15,17 @@ compileJava   {
 }
 
 dependencies {
-
-    compile 'org.avaje.composite:logback:1.1'
-    compile 'org.postgresql:postgresql:42.2.9'
-
     // ebean and ebean-querybean
-    compile 'io.ebean:ebean:12.6.5'
-    compile 'io.ebean:ebean-querybean:12.6.5'
-    compile "mysql:mysql-connector-java:8.0.21"
+    implementation 'io.ebean:ebean:13.17.3'
+    implementation 'io.ebean:ebean-querybean:13.17.3'
+    implementation("io.ebean:ebean-platform-h2:13.17.3")
+    implementation 'mysql:mysql-connector-java:8.0.28'
 
     // apt query bean generation
-    annotationProcessor 'io.ebean:querybean-generator:12.6.5'
+    annotationProcessor 'io.ebean:querybean-generator:13.17.3'
 
-    testCompile 'org.avaje.composite:junit:1.1'
-    testImplementation 'io.ebean:ebean-test:12.6.5'
+    testImplementation 'org.avaje.composite:junit:1.1'
+    testImplementation 'io.ebean:ebean-test:13.17.3'
 }
 
 ebean {

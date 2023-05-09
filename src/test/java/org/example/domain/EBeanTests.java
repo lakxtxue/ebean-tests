@@ -1,13 +1,13 @@
 package org.example.domain;
 
 import io.ebean.*;
-import io.ebean.annotation.TxIsolation;
 import io.ebean.config.DatabaseConfig;
-
-import org.example.domain.query.QConfig;
 import org.junit.Before;
 import org.junit.Test;
-import java.util.List;
+
+import java.util.Date;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class EBeanTests {
 	
@@ -20,115 +20,53 @@ public class EBeanTests {
 		config.setName("db");
 		config.setDefaultServer(true);
 		config.setDataTimeZone("GMT+8:00");
-//		config.setDisableL2Cache(true);
 		database = DatabaseFactory.create(config);
 	}
 
 	@Test
-	public void testLazyLoad(){
+	public void testEbeanSetField(){
+//		 Please execute the script in [test.sql] every time you execute the test to reset the data
 		DB.script().run("/test.sql");
-		// Please execute the script in [test.sql] every time you execute the test to reset the data
-		Config c1 = new QConfig().setUseCache(true).setId("config_1").findOne();
-		List<ConfCp> confCpList = c1.getConfCpList();
-		if(confCpList != null && !confCpList.isEmpty()){
-			List<ConfCpCon> conList = confCpList.get(0).getConList();
-			if (!conList.isEmpty()) {
-				conList.get(0);
-			}
-		}
-		c1.setConfigName("c1");
+		AssetsObject assetsObject = new AssetsObject();
+		assetsObject.setTenantId(1L);
+		assetsObject.setSourceId(1L);
+		assetsObject.setFullObjectName("123");
+		assetsObject.setObjectName("123");
+		assetsObject.setCreator("creator");
+		assetsObject.setModifier("modifier");
+		assetsObject.setCreatedStamp(new Date());
+		assetsObject.setLastUpdatedStamp(new Date());
+		assetsObject.save();
 
-		Config c2 = new QConfig().setUseCache(true).setId("config_1").findOne();
-		ConfCp confCp = c2.getConfCpList().get(0);
+		assetsObject = database.find(AssetsObject.class)
+				.where()
+					.eq("tenantId",1L)
+					.eq("sourceId", 1L)
+					.eq("fullObjectName","123")
+				.findOne();
+		//
+		assertThat(assetsObject.getCreator()).isNull();
 
-		ConfCpCon con = new ConfCpCon();
-		con.setId("newCon");
-		con.setEnabled("N");
-		confCp.getConList().clear();
-		confCp.getConList().add(con);
+		// The following program exception information will prompt that tenant_id is not allowed to be null
 
-		c2.getConfCpList().clear();
-		c2.getConfCpList().add(confCp);
+		// The earlier exception information also appeared as follows, but now I can't reproduce it:
+		// set tenantId on [org.example.domain.AssetsObjectFieldId] arg[creator] type[org.example.domain.AssetsObjectFieldId] threw error
+		// Caused by: java.lang.ClassCastException: class java.lang.String cannot be cast to class java.lang.Long (java.lang.String and java.lang.Long are in module java.base of loader 'bootstrap')
 
-
-		c2.save();
-
-		c1.save();
-
-
-
-		Config config = new QConfig().setUseCache(true).setId("config_1").findOne();
-		List<ConfCp> confCpList1 = config.getConfCpList();
-		if(confCpList1 != null && !confCpList1.isEmpty()){
-			List<ConfCpCon> conList = confCpList1.get(0).getConList();
-			if (conList != null) {
-				for (ConfCpCon confCpCon : conList) {
-					// An exception will be thrown here
-					// EntityNotFoundException: Bean not found during lazy load or refresh
-					System.out.println(confCpCon.getId()+":"+confCpCon.getEnabled());
-				}
-			}
-		}
-
+		// Also I tried, it works fine if my entities AssetsObject don't inherit from BaseModel anymore.
+		// But all in all it looks like an underlying problem internally, where creator and tenantId are in the wrong place?
+		AssetsObjectField assetsObjectField = new AssetsObjectField();
+		assetsObjectField.setAssetsObject(assetsObject);
+		assetsObjectField.setTenantId(1L);
+		assetsObjectField.setFullFieldName("S123");
+		assetsObjectField.setFieldName("S123");
+		assetsObjectField.setShortName("S123");
+		assetsObjectField.setCreator("creator");
+		assetsObjectField.setModifier("modifier");
+		assetsObjectField.setCreatedStamp(new Date());
+		assetsObjectField.setLastUpdatedStamp(new Date());
+		assetsObjectField.setFullObjectName(assetsObject.getFullObjectName());
+		assetsObjectField.save();
 	}
 
-	@Test
-	public void textMysqlLazyLoad() throws Exception {
-		DB.script().run("/test.sql");
-		Database database = DB.getDefault();
-
-		// 1 start a transaction for update
-		Transaction transactionA = database.beginTransaction(TxIsolation.REPEATABLE_READ);
-		Config con = new QConfig().setUseCache(true).usingTransaction(transactionA)
-				.setId("config_1").findOne();
-		ConfCp confCp = con.getConfCpList().get(0);
-		confCp.getConList().get(0).getEnabled();
-
-		// 2 delete data
-		ConfCpCon confCpCon = new ConfCpCon();
-		confCpCon.setId("newCon");
-		confCpCon.setEnabled("N");
-		confCpCon.setConfCp(confCp);
-		confCp.getConList().clear();
-		confCp.getConList().add(confCpCon);
-
-		Thread t1 = new Thread(()->{
-			// 4 query
-			Transaction transactionB = database.beginTransaction(TxIsolation.REPEATABLE_READ);
-			Config con1 = new QConfig().setUseCache(true).usingTransaction(transactionB)
-					.setId("config_1").findOne();
-			try {
-				Thread thread1 = Thread.currentThread();
-				synchronized (thread1) {
-					thread1.wait();
-				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			// 6 Lazy load
-			con1.getConfCpList().size();
-			con1.getConfCpList().get(0).getConList().size();
-		});
-
-		// 3 start another transaction for query by starting a thread
-		t1.start();
-		Thread.sleep(2000);// sleep the current thread to let the [t1] execute first
-
-		// 5 commit the transaction and clear the cache
-		con.save(transactionA);
-		transactionA.commit();
-		Thread.sleep(2000);
-		synchronized (t1) {
-			t1.notify();
-		}
-		Thread.sleep(2000);
-
-
-		con = new QConfig().setUseCache(true).setId("config_1").findOne();
-		ConfCpCon confCpCon1 = con.getConfCpList().get(0).getConList().get(0);
-		// 7
-		// An exception will be thrown here
-		// EntityNotFoundException: Bean not found during lazy load or refresh
-		confCpCon1.getEnabled();
-	}
 }
