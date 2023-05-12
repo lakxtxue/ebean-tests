@@ -22,9 +22,7 @@ public class AssetsObject extends BaseModel {
     @Column(name = "FULL_OBJECT_NAME")
     private String fullObjectName;
 
-    /**
-     * 对象名称，表名称或者是 文件 名称
-     */
+
     @Column(name = "OBJECT_NAME", length = 32, nullable = false)
     private String objectName;
 

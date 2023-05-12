@@ -57,6 +57,7 @@ public class EBeanTests {
 		// But all in all it looks like an underlying problem internally, where creator and tenantId are in the wrong place?
 		AssetsObjectField assetsObjectField = new AssetsObjectField();
 		assetsObjectField.setAssetsObject(assetsObject);
+		// NULL not allowed for column "TENANT_ID"; SQL statement
 		assetsObjectField.setTenantId(1L);
 		assetsObjectField.setFullFieldName("S123");
 		assetsObjectField.setFieldName("S123");
